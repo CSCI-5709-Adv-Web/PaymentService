@@ -23,18 +23,6 @@ const paymentSchema = new mongoose.Schema({
   time: {
     type: Date,
     require: true
-  },
-  stripeRefundId:{
-    type: String,
-    require: false,
-  },
-  refundAmount: {
-    type: Number,
-    require: false
-  },
-  refundTimeStamp:{
-    type: Date,
-    require: false
   }
 });
 

@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import { halfRefundPaymentService, makePaymentService, refundPaymentService, riderCommissionService } from "../service/payment.service";
+import {  makePaymentService,  refundService,  riderCommissionService } from "../service/payment.service";
 import { logger } from "../utils";
 import mongoose from "mongoose";
 import { createApiResponse } from "../utils/response";
@@ -31,56 +31,46 @@ export const makePaymentController = async (
   }
 };
 
-export const refundPaymentController = async (
+
+// In payment.controller.ts
+export const refundController = async (
   req: Request,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
   try {
-    // Get order_id from route parameters
-    const { order_id } = req.params;
+    // Get order_id from request body
+    const { order_id } = req.body;
 
-    // Process refund through service layer
-    const refund = await refundPaymentService(order_id);
+    if (!order_id) {
+      res.status(400).json({
+        success: false,
+        message: "order_id is required"
+      });
+      return;
+    }
 
-    createApiResponse(res, `Refund of ${refund.orderId} successfully done!`, 201, {
-      refundId: refund.id,
-      orderId: refund.orderId,
-      amount: refund.amount,
-      status: refund.status,
-      refundAT: refund.time
+    // Process refund through refund service
+    const result = await refundService(order_id);
+
+    // Determine message based on refund type
+    const message = result.isFullRefund 
+      ? `Full refund of ${result.amount} processed for order ${order_id}`
+      : `Partial refund of ${result.amount} processed for order ${order_id}`;
+
+    createApiResponse(res, message, 200, {
+      refundId: result.refundId,
+      orderId: order_id,
+      amount: result.amount,
+      status: result.status,
+      refundType: result.isFullRefund ? 'FULL' : 'PARTIAL',
+      refundTime: result.formattedTimestamp
     });
   } catch (error) {
     next(error);
   }
 };
 
-/**
- * Controller to handle half payment refunds
- */
-export const halfRefundPaymentController = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
-  try {
-    // Validate request
-    const { order_id, rider_id } = req.body;
-
-    // Process half refund through service layer
-    const refund = await halfRefundPaymentService(order_id, rider_id);
-
-    createApiResponse(res, `Refund of ${refund.orderId} successfully done!`, 201, {
-      refundId: refund.id,
-      orderId: refund.orderId,
-      amount: refund.amount,
-      status: refund.status,
-      halfrefundAT: refund.time
-    });
-  } catch (error) {
-    next(error);
-  }
-};
 
 /**
  * Controller to handle rider commissions (20% of payment)

@@ -2,6 +2,7 @@ import { logger } from "../utils";
 import dotenv from "dotenv";
 import { stripe } from "../config/stripe.config";
 import paymentRepository from "../repository/payment.repository";
+import refundRepository from "../repository/refund.repository";
 dotenv.config();
 
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
@@ -67,7 +68,8 @@ export const makePaymentService = async (cardDetails: any, orderId: string, amou
   }
 };
 
-export const refundPaymentService = async (orderId: string) => {
+
+export const refundService = async (orderId) => {
   try {
     // Find the payment in the database by order ID
     const payment = await paymentRepository.findByOrderId(orderId);
@@ -77,25 +79,75 @@ export const refundPaymentService = async (orderId: string) => {
       throw error;
     }
 
-    // Check if payment has already been refunded
-    if (payment.status === 'REFUND') {
-      const error = new Error(`Payment for order ${orderId} has already been refunded`);
+    // Check if a refund already exists for this order
+    const existingRefund = await refundRepository.findByOrderId(orderId);
+    if (existingRefund) {
+      const error = new Error(`Refund for order ${orderId} already exists`);
       throw error;
     }
 
-    // Create a refund in Stripe
+    // Check if payment status allows refunds
+    if (payment.status !== 'PAID') {
+      const error = new Error(`Payment for order ${orderId} cannot be refunded. Current status: ${payment.status}`);
+      throw error;
+    }
+
+    // Get payment timestamp and current time
+    const paymentTime = payment.time ? new Date(payment.time) : new Date();
+    const currentTime = new Date();
+    
+    // Calculate difference in minutes
+    const timeDiffMinutes = (currentTime.getTime() - paymentTime.getTime()) / (1000 * 60);
+    
+    // Determine refund type based on time difference
+    const isFullRefund = timeDiffMinutes <= 1;
+    
+    // Process refund in Stripe
+    let refundAmount = payment.amount;
+    if (!isFullRefund) {
+      // Calculate half amount for partial refund
+      refundAmount = Math.round(payment.amount * 50) / 100;
+    }
+    
     const refund = await stripe.refunds.create({
       charge: payment.stripePaymentId,
+      amount: isFullRefund ? undefined : Math.round(refundAmount * 100), // Full refund doesn't need amount
     });
 
     // Extract timestamp from Stripe
     const stripeTimestamp = new Date(refund.created * 1000);
     const formattedTimestamp = `${stripeTimestamp.toLocaleDateString()} ${stripeTimestamp.toLocaleTimeString()}`;
 
-    // Update payment status to refunded
-    const updatedPaymentDetails = paymentRepository.findOneByIdAndUpdateStatusAndAddRefund(orderId,"REFUND",payment.amount,refund.id,formattedTimestamp);
+    // Update payment status
+    const paymentStatus = isFullRefund ? 'REFUND' : 'PARTIAL-REFUND';
+    const updatedPayment = await paymentRepository.findOneByIdAndUpdateStatusAndAddRefund(
+      orderId, 
+      paymentStatus,
+      refundAmount,
+      refund.id,
+      formattedTimestamp
+    );
 
-    return updatedPaymentDetails;
+    // Create a new refund record in the refund collection
+    const refundRecord = await refundRepository.create({
+      orderId: orderId,
+      paymentId: payment.stripePaymentId,
+      amount: refundAmount,
+      stripeRefundId: refund.id,
+      status: isFullRefund ? 'FULL' : 'PARTIAL',
+      time: formattedTimestamp,
+      refundReason: isFullRefund ? 'Refund requested within 1 minute' : 'Refund requested after 1 minute'
+    });
+
+    return {
+      payment: updatedPayment,
+      refund: refundRecord,
+      refundId: refund.id,
+      amount: refundAmount,
+      status: paymentStatus,
+      isFullRefund: isFullRefund,
+      formattedTimestamp
+    };
   } catch (error) {
     // Handle Stripe-specific errors
     if (error.type && error.type.startsWith('Stripe')) {
@@ -108,52 +160,6 @@ export const refundPaymentService = async (orderId: string) => {
   }
 };
 
-export const halfRefundPaymentService = async (orderId: string, riderId: string) => {
-  try {
-    // Find the payment in the database by order ID
-    const payment = await paymentRepository.findByOrderId(orderId);
-
-    if (!payment) {
-      const error = new Error(`Payment for order ${orderId} not found`);
-      throw error;
-    }
-
-    // Check if payment has already been fully refunded
-    if (payment.status === 'REFUND') {
-      const error = new Error(`Payment for order ${orderId} has already been fully refunded`);
-      throw error;
-    }
-
-    // Calculate half amount (round to nearest cent)
-    const halfAmount = Math.round(payment.amount * 50) / 100;
-
-    // Create a partial refund in Stripe
-    const refund = await stripe.refunds.create({
-      charge: payment.stripePaymentId,
-      amount: Math.round(halfAmount * 100), // Convert to cents for Stripe
-    });
-
-    // Extract timestamp from Stripe
-    const stripeTimestamp = new Date(refund.created * 1000);
-    const formattedTimestamp = `${stripeTimestamp.toLocaleDateString()} ${stripeTimestamp.toLocaleTimeString()}`;
-
-    // Update payment status to partially_refunded
-    // payment.status = 'PARTIAL-REFUND';
-    // await payment.save();
-    const updatedPaymentDetails = await paymentRepository.findOneByIdAndUpdateStatusAndAddRefund(orderId, "PARTIAL-REFUND", halfAmount, refund.id,formattedTimestamp);
-
-    return updatedPaymentDetails;
-  } catch (error) {
-    // Handle Stripe-specific errors
-    if (error.type && error.type.startsWith('Stripe')) {
-      const customError = new Error(error.message || 'Half refund processing failed');
-      throw customError;
-    }
-
-    // Rethrow other errors
-    throw error;
-  }
-};
 
 export const riderCommissionService = async (orderId: string, riderId: string) => {
   try {
@@ -196,3 +202,4 @@ export const riderCommissionService = async (orderId: string, riderId: string) =
     throw error;
   }
 };
+
