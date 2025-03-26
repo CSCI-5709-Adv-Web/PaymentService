@@ -4,9 +4,7 @@ import * as dotenv from 'dotenv';
 
  import { ConnectWithDB } from "./db";
 dotenv.config();
-const PORT = process.env.APP_PORT || 9002;
-
-
+const PORT = process.env.PORT || 3000;
 
 export const StartServer = async () => {
   const expressApp = await ExpressApp();

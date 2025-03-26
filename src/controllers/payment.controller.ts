@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import { halfRefundPaymentService, makePaymentService, refundPaymentService, riderCommissionService } from "../service/payment.service";
 import { logger } from "../utils";
 import mongoose from "mongoose";
+import { createApiResponse } from "../utils/response";
 
 /**
  * Controller to handle payment processing
@@ -16,16 +17,14 @@ export const makePaymentController = async (
     const { cardDetails, orderId, amount } = req.body;
 
     // Process payment through service layer
-    const payment = await makePaymentService(cardDetails, orderId, amount);
-
-    res.status(201).json({
-      success: true,
-      data: {
-        paymentId: payment.stripePaymentId,
-        orderId: payment.orderId,
-        amount: payment.amount,
-        status: payment.status
-      }
+    const result = await makePaymentService(cardDetails, orderId, amount);
+    
+    createApiResponse(res, `Payment of ${result.payment.orderId} successfully done!`, 201, {
+      paymentId: result.payment.stripePaymentId,
+      orderId: result.payment.orderId,
+      amount: result.payment.amount,
+      status: result.payment.status,
+      paymentAT: result.formattedTimestamp
     });
   } catch (error) {
     next(error);
@@ -44,14 +43,12 @@ export const refundPaymentController = async (
     // Process refund through service layer
     const refund = await refundPaymentService(order_id);
 
-    res.status(200).json({
-      success: true,
-      data: {
-        refundId: refund.id,
-        orderId: refund.orderId,
-        amount: refund.amount,
-        status: refund.status
-      }
+    createApiResponse(res, `Refund of ${refund.orderId} successfully done!`, 201, {
+      refundId: refund.id,
+      orderId: refund.orderId,
+      amount: refund.amount,
+      status: refund.status,
+      refundAT: refund.time
     });
   } catch (error) {
     next(error);
@@ -73,15 +70,12 @@ export const halfRefundPaymentController = async (
     // Process half refund through service layer
     const refund = await halfRefundPaymentService(order_id, rider_id);
 
-    res.status(200).json({
-      success: true,
-      data: {
-        refundId: refund.id,
-        orderId: refund.orderId,
-        amount: refund.amount,
-        status: refund.status,
-        rider_id: refund.rider_id
-      }
+    createApiResponse(res, `Refund of ${refund.orderId} successfully done!`, 201, {
+      refundId: refund.id,
+      orderId: refund.orderId,
+      amount: refund.amount,
+      status: refund.status,
+      halfrefundAT: refund.time
     });
   } catch (error) {
     next(error);
@@ -103,55 +97,15 @@ export const riderCommissionController = async (
     // Process rider commission through service layer
     const commission = await riderCommissionService(order_id, rider_id);
 
-    res.status(200).json({
-      success: true,
-      message: "rider commission",
-      data: {
-        orderId: commission.orderId,
-        riderId: commission.riderId,
-        totalAmount: commission.totalAmount,
-        commissionAmount: commission.commissionAmount,
-        percentage: commission.percentage
-      }
+    createApiResponse(res, `Rider commission for ${commission.orderId} successfully processed!`, 201, {
+      orderId: commission.orderId,
+      riderId: commission.riderId,
+      totalAmount: commission.totalAmount,
+      commissionAmount: commission.commissionAmount,
+      SalaryAT: commission.formattedTimestamp
     });
   } catch (error) {
     next(error);
   }
 };
- // try {
-  //   const { amount, orderId } = req.body;
 
-  //   if (!amount || !orderId) {
-  //     logger.warn("Missing payment details", { amount, orderId });
-  //     res.status(400).json({ success: false, message: "Both amount and orderId are required" });
-  //     return;
-  //   }
-
-  //   if (!mongoose.Types.ObjectId.isValid(orderId)) {
-  //     logger.warn(`Invalid orderId: ${orderId}`);
-  //     res.status(400).json({ success: false, message: "Invalid orderId format" });
-  //     return;
-  //   }
-
-  //   const numericAmount = Number(amount);
-  //   if (isNaN(numericAmount) || numericAmount <= 0) {
-  //     logger.warn(`Invalid amount: ${amount}`);
-  //     res.status(400).json({ success: false, message: "Amount must be a positive number" });
-  //     return;
-  //   }
-
-  //   logger.info(`Processing payment for order ${orderId}`);
-  //   const paymentResponse = await makePaymentService(numericAmount, orderId);
-
-  //   res.status(200).json(paymentResponse);
-  // } catch (error: any) {
-  //   logger.error(`Payment error: ${error.message}`);
-  //   const msg = error.message.includes("already paid")
-  //     ? [400, error.message]
-  //     : error.message.includes("not found")
-  //     ? [404, error.message]
-  //     : [500, "Failed to create payment intent"];
-
-  //   res.status(msg[0]).json({ success: false, message: msg[1] });
-  // }
- 

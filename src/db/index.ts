@@ -4,7 +4,7 @@ dotenv.config();
 import mongoose, { ConnectOptions } from 'mongoose';
 import { logger } from '../utils';
 
-const DB_URL = process.env.MONGODB_URI || ''; // ✅ Fix the variable name
+const DB_URL = process.env.MONGODB_URI || ''; 
 
 export const ConnectWithDB = async () => {
   try {
@@ -12,9 +12,9 @@ export const ConnectWithDB = async () => {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     } as ConnectOptions);
-    logger.info('✅ MongoDB connected in order-service...');
+    logger.info('MongoDB connected in payment-service...');
   } catch (err) {
-    logger.error('❌ MongoDB connection error:', err);
+    logger.error('MongoDB connection error:', err);
     process.exit(1);
   }
 };

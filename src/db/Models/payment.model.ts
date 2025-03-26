@@ -11,23 +11,32 @@ const paymentSchema = new mongoose.Schema({
     type: Number,
     required: true
   },
-  currency: {
-    type: String,
-    default: 'cad'
-  },
   stripePaymentId: {
     type: String,
     required: true
   },
   status: {
     type: String,
-    enum: ['pending', 'completed', 'failed', 'refunded', 'partially_refunded'],
-    default: 'pending'
+    enum: ['PAID', 'REFUND', 'PARTIAL-REFUND'],
+    default: 'PAID'
   },
-  createdAt: {
+  time: {
     type: Date,
-    default: Date.now
+    require: true
+  },
+  stripeRefundId:{
+    type: String,
+    require: false,
+  },
+  refundAmount: {
+    type: Number,
+    require: false
+  },
+  refundTimeStamp:{
+    type: Date,
+    require: false
   }
 });
 
-export const Payment = mongoose.model('paymentfeature', paymentSchema); // 👈 Set exact collection name
+export const Payment = mongoose.model('PaymentFeatures', paymentSchema); 
+
