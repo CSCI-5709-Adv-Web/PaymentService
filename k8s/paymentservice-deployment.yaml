@@ -20,6 +20,13 @@ spec:
           ports:
             - containerPort: 9000
               name: http
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
           env:
             - name: PORT
               valueFrom:
