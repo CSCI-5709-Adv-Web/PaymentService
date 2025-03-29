@@ -1,8 +1,8 @@
 import { ExpressApp } from "./express-app";
 import { logger } from "./utils";
 import * as dotenv from 'dotenv';
+import { ConnectWithDB } from "./db";
 
- import { ConnectWithDB } from "./db";
 dotenv.config();
 const PORT = process.env.PORT || 3000;
 
@@ -11,10 +11,7 @@ export const StartServer = async () => {
   expressApp.listen(PORT, () => {
     logger.info(`App is listening to ${PORT}`);
   });
-
-  // Connect to MongoDB database
-   ConnectWithDB();
-
+  ConnectWithDB();
   process.on("uncaughtException", async (err) => {
     logger.error(err);
     process.exit(1);
