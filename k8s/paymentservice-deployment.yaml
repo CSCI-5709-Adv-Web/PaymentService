@@ -38,11 +38,21 @@ spec:
                 secretKeyRef:
                   name: payment-service-secret
                   key: stripe_secret_key
-            - name: DB_URL
+            - name: MONGODB_URI
               valueFrom:
                 secretKeyRef:
                   name: payment-service-secret
                   key: db_url
+            - name: ORDER_SERVICE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: payment-service-configmap
+                  key: order_service_url
+            - name: NODE_ENV
+              valueFrom:
+                secretKeyRef:
+                  name: payment-service-configmap
+                  key: node_env
 ---
 apiVersion: v1
 kind: Service

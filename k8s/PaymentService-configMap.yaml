@@ -6,5 +6,5 @@ metadata:
     app: payment-service-configmap
 data:
   port: "9000"
-  order_service_url: "http://order-service/order"
-
+  order_service_url: "http://order-service:80/order"
+  node_env: "development"
