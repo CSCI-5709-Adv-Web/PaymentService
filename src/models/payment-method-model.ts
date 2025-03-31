@@ -1,5 +1,53 @@
 import mongoose, { type Document, Schema } from "mongoose"
 
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     PaymentMethod:
+ *       type: object
+ *       required:
+ *         - customerId
+ *         - stripeCustomerId
+ *         - paymentMethodId
+ *         - cardholderName
+ *         - last4
+ *         - cardType
+ *         - expiryDate
+ *       properties:
+ *         customerId:
+ *           type: string
+ *           description: Internal customer ID
+ *         stripeCustomerId:
+ *           type: string
+ *           description: Stripe customer ID
+ *         paymentMethodId:
+ *           type: string
+ *           description: Stripe payment method ID
+ *         cardholderName:
+ *           type: string
+ *           description: Name on the card
+ *         last4:
+ *           type: string
+ *           description: Last 4 digits of the card
+ *         cardType:
+ *           type: string
+ *           description: Type of card (visa, mastercard, etc.)
+ *         expiryDate:
+ *           type: string
+ *           description: Card expiry date (MM/YY)
+ *         isDefault:
+ *           type: boolean
+ *           description: Whether this is the default payment method
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *           description: Creation timestamp
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ *           description: Last update timestamp
+ */
 export interface IPaymentMethod extends Document {
   customerId: string
   stripeCustomerId: string

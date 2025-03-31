@@ -1,111 +1,87 @@
-### Order Service
+# Payment Service
+
+A microservice for handling payment processing using Stripe, designed to work within a Kubernetes environment.
 
 ## Overview
 
-The Order Service manages delivery orders for the Commune Drop platform. It serves as the central coordination point between customers, carriers, and other services in the platform.
+The Payment Service is responsible for managing customer payment information, processing payments, and handling refunds. It integrates with Stripe for payment processing and communicates with the Order Service to update order statuses after successful payments.
 
 ## Features
 
-- Create and manage delivery orders
-- Track order status in real-time
-- Cancel or modify existing orders
-- Retrieve order history and details
-- Coordinate with other services for a complete delivery workflow
+- Customer management (create/retrieve customers)
+- Payment method management (add/list/delete payment methods)
+- Payment processing (create payment intents)
+- Refund processing
+- Integration with Order Service for status updates
 
+## Tech Stack
 
-## Dependencies
+- Node.js with Express
+- TypeScript
+- MongoDB for data storage
+- Stripe API for payment processing
+- Docker for containerization
+- Kubernetes for orchestration
 
-- Auth Service: User authentication and authorization
-- Valuation Service: Delivery price calculation
-- Carrier Service: Finding and assigning riders
-- Location Service: Order and rider tracking
-- Payment Service: Processing payments
-- Notification Service: Sending status updates
+## API Endpoints
 
+### Customer Management
 
-## Technology Stack
+- `GET /payment/customer/:email` - Get a customer by email
+- `POST /payment/customer` - Create a new customer
 
-- Runtime: Node.js
-- Framework: Express.js
-- Database: MongoDB
-- Message Queue: RabbitMQ/Kafka
-- Caching: Redis
+### Payment Method Management
 
+- `GET /payment/payment-methods/:customerId` - List all payment methods for a customer
+- `POST /payment/payment-method` - Add a new payment method to a customer
+- `POST /payment/payment-method-details` - Add a payment method with card details
+- `DELETE /payment/payment-method` - Delete a payment method
 
-## Setup
+### Payment Processing
 
-### Prerequisites
+- `POST /payment/payment-intent` - Create a payment intent and charge the customer
+- `POST /payment/refund` - Process a refund for a specific payment intent
 
-- Node.js v16+
-- MongoDB
-- Redis
+## Environment Variables
 
+The service requires the following environment variables:
 
-### Quick Start
+- `PORT` - Port on which the service runs
+- `MONGODB_URI` - MongoDB connection string
+- `STRIPE_SECRET_KEY` - Stripe API secret key
+- `ORDER_SERVICE_URL` - URL of the Order Service
+- `NODE_ENV` - Environment (development, production)
+
+## Data Models
+
+### Customer
+
+Stores information about customers and their Stripe IDs.
+
+### Payment Method
+
+Stores information about saved payment methods.
+
+### Payment
+
+Stores information about processed payments and refunds.
+
+## Deployment
+
+The service is containerized using Docker and deployed on Kubernetes. The Kubernetes configuration files are available in the `k8s` directory.
+
+## API Documentation
+
+API documentation is available via Swagger UI at `/api-docs` when the service is running.
+
+## Getting Started
 
 1. Clone the repository
+2. Install dependencies: `npm install`
+3. Set up environment variables
+4. Run the service: `npm start`
+5. For development: `npm run dev`
 
+## Testing
 
-```shellscript
-git clone https://github.com/commune-drop/order-service.git
-cd order-service
-```
-
-2. Install dependencies
-
-
-```shellscript
-npm install
-```
-
-3. Configure environment variables
-
-
-```shellscript
-cp .env.example .env
-# Edit .env with your configuration
-```
-
-4. Start the service
-
-
-```shellscript
-npm start
-```
-
-For development:
-
-```shellscript
-npm run dev
-```
-
-## Configuration
-
-Key environment variables:
-
-```env
-PORT=3001
-MONGODB_URI=mongodb://localhost:27017/order-service
-AUTH_SERVICE_URL=http://auth-service:3000
-VALUATION_SERVICE_URL=http://valuation-service:3004
-CARRIER_SERVICE_URL=http://carrier-service:3006
-LOCATION_SERVICE_URL=http://location-service:3002
-PAYMENT_SERVICE_URL=http://payment-service:3003
-NOTIFICATION_SERVICE_URL=http://notification-service:3005
-```
-
-## Status Events
-
-The service publishes these events when order status changes:
-
-- `order.created`
-- `order.accepted`
-- `order.picked_up`
-- `order.in_transit`
-- `order.delivered`
-- `order.cancelled`
-
-
-## License
-
-MIT
+Run tests with: `npm test`

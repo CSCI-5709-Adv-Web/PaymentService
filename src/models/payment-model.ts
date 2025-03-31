@@ -1,5 +1,59 @@
 import mongoose, { type Document, Schema } from "mongoose"
 
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     Payment:
+ *       type: object
+ *       required:
+ *         - orderId
+ *         - customerId
+ *         - paymentMethodId
+ *         - paymentIntentId
+ *         - amount
+ *         - currency
+ *         - status
+ *       properties:
+ *         orderId:
+ *           type: string
+ *           description: ID of the associated order
+ *         customerId:
+ *           type: string
+ *           description: ID of the customer
+ *         paymentMethodId:
+ *           type: string
+ *           description: ID of the payment method used
+ *         paymentIntentId:
+ *           type: string
+ *           description: Stripe payment intent ID
+ *         amount:
+ *           type: number
+ *           description: Payment amount in cents
+ *         currency:
+ *           type: string
+ *           description: Currency code (e.g., usd)
+ *         status:
+ *           type: string
+ *           description: Payment status
+ *         refunded:
+ *           type: boolean
+ *           description: Whether the payment has been refunded
+ *         refundAmount:
+ *           type: number
+ *           description: Amount refunded (if applicable)
+ *         refundId:
+ *           type: string
+ *           description: ID of the refund (if applicable)
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *           description: Creation timestamp
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ *           description: Last update timestamp
+ */
 export interface IPayment extends Document {
   orderId: string
   customerId: string
