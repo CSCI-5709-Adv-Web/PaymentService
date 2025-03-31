@@ -1,11 +1,11 @@
-import { logger } from "../utils/logger"
-import fetch from "node-fetch"
-import dotenv from "dotenv"
+import { logger } from "../utils/logger";
+import dotenv from "dotenv";
 
-dotenv.config()
+dotenv.config();
 
 // Get the order service URL from environment variables
-const ORDER_SERVICE_URL = process.env.ORDER_SERVICE_URL || "http://order-service"
+const ORDER_SERVICE_URL =
+  process.env.ORDER_SERVICE_URL || "http://order-service";
 
 /**
  * Updates the order status after a successful payment
@@ -13,9 +13,14 @@ const ORDER_SERVICE_URL = process.env.ORDER_SERVICE_URL || "http://order-service
  * @param token Authentication token for the order service
  * @returns Response from the order service
  */
-export const updateOrderStatus = async (orderId: string, token: string): Promise<any> => {
+export const updateOrderStatus = async (
+  orderId: string,
+  token: string
+): Promise<any> => {
   try {
-    logger.info(`Updating order status for order ${orderId} to PAYMENT RECEIVED`)
+    logger.info(
+      `Updating order status for order ${orderId} to PAYMENT RECEIVED`
+    );
 
     const response = await fetch(`${ORDER_SERVICE_URL}/updateStatus`, {
       method: "PUT",
@@ -27,20 +32,23 @@ export const updateOrderStatus = async (orderId: string, token: string): Promise
         orderId,
         status: "PAYMENT RECEIVED",
       }),
-    })
+    });
 
     if (!response.ok) {
-      const errorData = await response.json()
-      logger.error(`Failed to update order status: ${JSON.stringify(errorData)}`)
-      throw new Error(`Order status update failed with status ${response.status}`)
+      const errorData = await response.json();
+      logger.error(
+        `Failed to update order status: ${JSON.stringify(errorData)}`
+      );
+      throw new Error(
+        `Order status update failed with status ${response.status}`
+      );
     }
 
-    const data = await response.json()
-    logger.info(`Successfully updated order status for order ${orderId}`)
-    return data
+    const data = await response.json();
+    logger.info(`Successfully updated order status for order ${orderId}`);
+    return data;
   } catch (error) {
-    logger.error(`Error updating order status: ${error}`)
-    throw error
+    logger.error(`Error updating order status: ${error}`);
+    throw error;
   }
-}
-
+};
