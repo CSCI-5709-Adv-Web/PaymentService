@@ -45,12 +45,12 @@ spec:
                   key: db_url
             - name: ORDER_SERVICE_URL
               valueFrom:
-                secretKeyRef:
+                configMapKeyRef:
                   name: payment-service-configmap
                   key: order_service_url
             - name: NODE_ENV
               valueFrom:
-                secretKeyRef:
+                configMapKeyRef:
                   name: payment-service-configmap
                   key: node_env
 ---
