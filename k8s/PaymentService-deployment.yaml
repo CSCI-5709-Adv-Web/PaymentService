@@ -70,4 +70,3 @@ spec:
       targetPort: 9000
       name: http
   type: LoadBalancer
-#
