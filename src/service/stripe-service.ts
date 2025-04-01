@@ -1,41 +1,14 @@
 import dotenv from "dotenv"
-import Stripe from "stripe"
-import https from "https"
 import { CustomerModel } from "../models/customer-model"
 import { PaymentModel } from "../models/payment-model"
 import { PaymentMethodModel } from "../models/payment-method-model"
 import { logger } from "../utils"
+import { stripeApi } from "../utils/stripe-api"
 import { updateOrderStatus } from "./order-service"
 
 dotenv.config()
 
 class StripePaymentProcessor {
-  private stripe: Stripe
-
-  constructor() {
-    if (!process.env.STRIPE_SECRET_KEY) {
-      throw new Error("STRIPE_SECRET_KEY environment variable is required")
-    }
-    this.stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-      apiVersion: "2025-02-24.acacia", // Use existing stable version instead of future date
-      timeout: 60000, // Increase timeout to 60 seconds
-      maxNetworkRetries: 5, // Increase retry attempts
-      telemetry: false, // Disable telemetry which can sometimes cause issues
-      httpAgent: new https.Agent({
-        keepAlive: true,
-        rejectUnauthorized: false, // Ensure SSL validation
-        timeout: 60000
-      })
-    })
-    
-    // Add detailed logging for debugging
-    if (process.env.DEBUG_STRIPE === 'true') {
-      this.stripe.on('request', (request) => {
-        logger.info(`Stripe API Request: ${request.method} ${request.path}`)
-      })
-    }
-  }
-
   /**
    * Get a customer by email
    */
@@ -55,7 +28,7 @@ class StripePaymentProcessor {
         logger.info(`Found customer with email ${email} but no Stripe ID, checking Stripe`)
 
         // Try to find existing customer in Stripe
-        const stripeCustomers = await this.stripe.customers.list({
+        const stripeCustomers = await stripeApi.customers.list({
           email,
           limit: 1,
         })
@@ -73,7 +46,7 @@ class StripePaymentProcessor {
         }
       } else {
         // No customer in our DB, check if they exist in Stripe
-        const stripeCustomers = await this.stripe.customers.list({
+        const stripeCustomers = await stripeApi.customers.list({
           email,
           limit: 1,
         })
@@ -118,7 +91,7 @@ class StripePaymentProcessor {
       }
 
       // Create new customer in Stripe
-      const newStripeCustomer = await this.stripe.customers.create({
+      const newStripeCustomer = await stripeApi.customers.create({
         email,
         name,
         metadata: {
@@ -185,7 +158,7 @@ class StripePaymentProcessor {
       }
 
       // If no stored methods, fall back to Stripe
-      const paymentMethods = await this.stripe.paymentMethods.list({
+      const paymentMethods = await stripeApi.paymentMethods.list({
         customer: customerId,
         type: "card",
       })
@@ -208,12 +181,12 @@ class StripePaymentProcessor {
   async addPaymentMethod(customerId: string, paymentMethodId: string) {
     try {
       // Attach payment method to customer
-      await this.stripe.paymentMethods.attach(paymentMethodId, {
+      await stripeApi.paymentMethods.attach(paymentMethodId, {
         customer: customerId,
       })
 
       // Get payment method details
-      const paymentMethod = await this.stripe.paymentMethods.retrieve(paymentMethodId)
+      const paymentMethod = await stripeApi.paymentMethods.retrieve(paymentMethodId)
 
       // Save payment method to database
       await CustomerModel.findOneAndUpdate(
@@ -248,12 +221,12 @@ class StripePaymentProcessor {
   ) {
     try {
       // Attach payment method to customer
-      await this.stripe.paymentMethods.attach(paymentMethodId, {
+      await stripeApi.paymentMethods.attach(paymentMethodId, {
         customer: customerId,
       })
 
       // Get payment method details from Stripe
-      const paymentMethod = await this.stripe.paymentMethods.retrieve(paymentMethodId)
+      const paymentMethod = await stripeApi.paymentMethods.retrieve(paymentMethodId)
 
       // Find customer in our database
       const customer = await CustomerModel.findOneAndUpdate(
@@ -270,7 +243,7 @@ class StripePaymentProcessor {
 
       // If this is the default card and the stripe customer exists, update default payment method
       if (cardDetails.isDefault) {
-        await this.stripe.customers.update(customerId, {
+        await stripeApi.customers.update(customerId, {
           invoice_settings: {
             default_payment_method: paymentMethodId,
           },
@@ -344,7 +317,7 @@ class StripePaymentProcessor {
       const wasDefault = paymentMethod?.isDefault || false
 
       // Delete from Stripe - detach the payment method
-      await this.stripe.paymentMethods.detach(paymentMethodId)
+      await stripeApi.paymentMethods.detach(paymentMethodId)
 
       // Remove from customer's payment methods array
       await CustomerModel.findOneAndUpdate(
@@ -372,7 +345,7 @@ class StripePaymentProcessor {
           await anotherPaymentMethod.save()
 
           // Set as default in Stripe
-          await this.stripe.customers.update(customerId, {
+          await stripeApi.customers.update(customerId, {
             invoice_settings: {
               default_payment_method: anotherPaymentMethod.paymentMethodId,
             },
@@ -418,7 +391,7 @@ class StripePaymentProcessor {
       }
 
       // Create payment intent with automatic payment methods and no redirects
-      const paymentIntentOptions: Stripe.PaymentIntentCreateParams = {
+      const paymentIntentOptions: Record<string, any> = {
         amount, // Amount in cents
         currency,
         customer: customerId,
@@ -452,7 +425,7 @@ class StripePaymentProcessor {
         })}`,
       )
 
-      const paymentIntent = await this.stripe.paymentIntents.create(paymentIntentOptions)
+      const paymentIntent = await stripeApi.paymentIntents.create(paymentIntentOptions)
 
       // Save payment details to database
       await PaymentModel.create({
@@ -495,10 +468,10 @@ class StripePaymentProcessor {
   async refundPayment(paymentIntentId: string, amount?: number, reason?: string) {
     try {
       // Retrieve the original payment intent to verify details
-      const paymentIntent = await this.stripe.paymentIntents.retrieve(paymentIntentId)
+      const paymentIntent = await stripeApi.paymentIntents.retrieve(paymentIntentId)
 
       // Prepare refund parameters
-      const refundParams: Stripe.RefundCreateParams = {
+      const refundParams: Record<string, any> = {
         payment_intent: paymentIntentId,
       }
 
@@ -508,7 +481,7 @@ class StripePaymentProcessor {
       }
 
       // Process the refund
-      const refund = await this.stripe.refunds.create(refundParams)
+      const refund = await stripeApi.refunds.create(refundParams)
 
       // Update payment record in database
       const payment = await PaymentModel.findOne({ paymentIntentId })
@@ -535,3 +508,4 @@ class StripePaymentProcessor {
 }
 
 export default new StripePaymentProcessor()
+
