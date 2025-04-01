@@ -10,19 +10,11 @@ import type {
 
 dotenv.config()
 
-// Extend RequestInit to include timeout
-declare module "node:http" {
-  interface RequestInit {
-    timeout?: number
-  }
-}
-
 // Stripe API base URL
 const STRIPE_API_BASE = "https://api.stripe.com/v1"
 
 // Get Stripe secret key from environment variables
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY
-const STRIPE_ACCOUNT_ID = process.env.STRIPE_ACCOUNT_ID
 
 if (!STRIPE_SECRET_KEY) {
   throw new Error("STRIPE_SECRET_KEY environment variable is required")
@@ -33,10 +25,6 @@ const getHeaders = () => {
   const headers: Record<string, string> = {
     "Content-Type": "application/x-www-form-urlencoded",
     Authorization: `Bearer ${STRIPE_SECRET_KEY}`,
-  }
-
-  if (STRIPE_ACCOUNT_ID) {
-    headers["Stripe-Account"] = STRIPE_ACCOUNT_ID
   }
 
   return headers
