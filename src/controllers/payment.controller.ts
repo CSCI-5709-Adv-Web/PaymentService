@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express"
 import stripeService from "../service/stripe-service"
+import { logger } from "../utils"
 
 class PaymentController {
   /**
@@ -177,6 +178,9 @@ class PaymentController {
    * Create a payment intent
    */
   async createPaymentIntent(req: Request, res: Response, next: NextFunction): Promise<void> {
+    const requestStartTime = Date.now()
+    logger.info(`Payment intent request received at ${new Date().toISOString()}`)
+
     try {
       const { amount, customerId, paymentMethodId, orderId, currency, returnUrl } = req.body
       // Get the auth token from the request headers
@@ -201,7 +205,7 @@ class PaymentController {
       }
 
       // Log the request parameters
-      console.log("Creating payment intent with parameters:", {
+      logger.info("Creating payment intent with parameters:", {
         amount: parsedAmount,
         customerId,
         paymentMethodId,
@@ -209,6 +213,22 @@ class PaymentController {
         currency,
         returnUrl: returnUrl || "Not provided",
       })
+
+      // Set a timeout for the response
+      const responseTimeout = setTimeout(() => {
+        logger.warn(`Payment intent request timed out after 55 seconds for order ${orderId}`)
+        if (!res.headersSent) {
+          res.status(202).json({
+            success: true,
+            pending: true,
+            message: "Payment is being processed, but the request timed out. Check payment status separately.",
+            data: {
+              orderId,
+              status: "processing",
+            },
+          })
+        }
+      }, 55000) // 55 seconds timeout
 
       const paymentIntent = await stripeService.createPaymentIntent(
         parsedAmount,
@@ -220,12 +240,33 @@ class PaymentController {
         authToken,
       )
 
+      // Clear the timeout since we got a response
+      clearTimeout(responseTimeout)
+
+      const requestDuration = Date.now() - requestStartTime
+      logger.info(`Payment intent request completed in ${requestDuration}ms`)
+
       res.json({
         success: true,
         data: paymentIntent,
       })
-    } catch (error) {
-      next(error)
+    } catch (error: any) {
+      const requestDuration = Date.now() - requestStartTime
+      logger.error(`Payment intent request failed after ${requestDuration}ms: ${error.message}`)
+
+      // If headers are already sent (e.g., by the timeout), we don't need to send another response
+      if (!res.headersSent) {
+        // Check if it's a timeout error
+        if (error.message && error.message.includes("timed out")) {
+          res.status(408).json({
+            success: false,
+            message: "Payment processing timed out. Please check payment status separately.",
+            error: error.message,
+          })
+        } else {
+          next(error)
+        }
+      }
     }
   }
 
