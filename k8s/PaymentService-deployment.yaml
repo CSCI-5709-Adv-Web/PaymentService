@@ -53,6 +53,11 @@ spec:
                 configMapKeyRef:
                   name: payment-service-configmap
                   key: node_env
+            - name: STRIPE_ACCOUNT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: payment-service-secret
+                  key: stripe_account_id
 ---
 apiVersion: v1
 kind: Service
