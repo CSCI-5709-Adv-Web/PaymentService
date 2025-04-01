@@ -42,7 +42,7 @@ const specs = swaggerJsdoc(options)
 
 export const setupSwagger = (app: Express) => {
   app.use(
-    "/api-docs",
+    "/payment/api-docs",
     swaggerUi.serve,
     swaggerUi.setup(specs, {
       explorer: true,
@@ -52,7 +52,7 @@ export const setupSwagger = (app: Express) => {
   )
 
   // Serve the OpenAPI spec as JSON
-  app.get("/api-docs.json", (req, res) => {
+  app.get("/payment/api-docs.json", (req, res) => {
     res.setHeader("Content-Type", "application/json")
     res.send(specs)
   })
