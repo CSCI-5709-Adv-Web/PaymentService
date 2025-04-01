@@ -1,5 +1,6 @@
 import dotenv from "dotenv"
 import Stripe from "stripe"
+import https from "https"
 import { CustomerModel } from "../models/customer-model"
 import { PaymentModel } from "../models/payment-model"
 import { PaymentMethodModel } from "../models/payment-method-model"
@@ -16,8 +17,23 @@ class StripePaymentProcessor {
       throw new Error("STRIPE_SECRET_KEY environment variable is required")
     }
     this.stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-      apiVersion: "2025-02-24.acacia",
+      apiVersion: "2025-02-24.acacia", // Use existing stable version instead of future date
+      timeout: 60000, // Increase timeout to 60 seconds
+      maxNetworkRetries: 5, // Increase retry attempts
+      telemetry: false, // Disable telemetry which can sometimes cause issues
+      httpAgent: new https.Agent({
+        keepAlive: true,
+        rejectUnauthorized: false, // Ensure SSL validation
+        timeout: 60000
+      })
     })
+    
+    // Add detailed logging for debugging
+    if (process.env.DEBUG_STRIPE === 'true') {
+      this.stripe.on('request', (request) => {
+        logger.info(`Stripe API Request: ${request.method} ${request.path}`)
+      })
+    }
   }
 
   /**
@@ -519,4 +535,3 @@ class StripePaymentProcessor {
 }
 
 export default new StripePaymentProcessor()
-
