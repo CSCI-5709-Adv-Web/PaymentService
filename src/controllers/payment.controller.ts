@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from "express"
 import stripeService from "../service/stripe-service"
 import { logger } from "../utils"
+import { updateOrderStatus } from "../service/order-service"
 
 class PaymentController {
   /**
@@ -242,6 +243,15 @@ class PaymentController {
 
       // Clear the timeout since we got a response
       clearTimeout(responseTimeout)
+
+      // If payment is successful, update the order status asynchronously
+      if (paymentIntent.status === "succeeded" && authToken) {
+        logger.info(`Payment successful for order ${orderId}, updating order status asynchronously`)
+        // Don't await this - let it run in the background
+        updateOrderStatus(orderId, authToken).catch((error) => {
+          logger.error(`Failed to update order status for order ${orderId}: ${error}`)
+        })
+      }
 
       const requestDuration = Date.now() - requestStartTime
       logger.info(`Payment intent request completed in ${requestDuration}ms`)
